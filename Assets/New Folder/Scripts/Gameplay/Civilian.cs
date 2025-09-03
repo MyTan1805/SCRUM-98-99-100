@@ -1,78 +1,98 @@
 using UnityEngine;
-using UnityEngine.AI; 
+using UnityEngine.AI;
 
-[RequireComponent(typeof(Collider), typeof(NavMeshAgent))]
 public class Civilian : MonoBehaviour, ITargetable
 {
     public enum CivilianState { Panicked, Unconscious, Following, Rescued }
 
-    [Header("Civilian State")]
+    [Header("State")]
     [SerializeField] private CivilianState currentState = CivilianState.Panicked;
+    [Tooltip("Đã được bot kiểm tra xong để tránh chọn lại.")]
+    public bool assessed = false;
 
-    private NavMeshAgent navMeshAgent;
-    private Transform rescuer = null;
+    [Header("Interact")]
+    [Tooltip("Điểm bot quỳ/kiểm tra. Trống sẽ dùng vị trí nạn nhân.")]
+    public Transform interactPoint;
 
-    private void Awake()
+    NavMeshAgent agent;
+    Transform rescuer;
+
+    // Helpers
+    public bool IsUnconscious => currentState == CivilianState.Unconscious;
+    public bool IsAvailable =>
+    !assessed && (currentState == CivilianState.Panicked || currentState == CivilianState.Unconscious);
+    public Vector3 GetInteractPos() => interactPoint ? interactPoint.position : transform.position;
+
+    void Awake()
     {
-        navMeshAgent = GetComponent<NavMeshAgent>();
-        navMeshAgent.enabled = false; 
+        agent = GetComponent<NavMeshAgent>();
+        if (!agent) agent = gameObject.AddComponent<NavMeshAgent>();
+        agent.enabled = false;
     }
 
-    private void Update()
+    void Update()
     {
-        if (currentState == CivilianState.Following && rescuer != null)
+        if (currentState == CivilianState.Following && rescuer != null && agent.enabled)
         {
-            navMeshAgent.SetDestination(rescuer.position);
+            if (!agent.isOnNavMesh)
+            {
+                if (NavMesh.SamplePosition(transform.position, out var hit, 2f, NavMesh.AllAreas))
+                    agent.Warp(hit.position);
+            }
+            agent.SetDestination(rescuer.position);
         }
     }
 
+    // “Khám nhanh” để xuất trạng thái
+    public string Assess()
+    {
+        assessed = true;
+        return IsUnconscious ? "Bất tỉnh" : "Còn tỉnh táo";
+    }
+
+    // Bắt đầu cứu (cho nạn nhân theo sau rescuer)
     public void StartRescue(Transform rescuerTransform)
     {
         if (currentState == CivilianState.Rescued) return;
 
-        Debug.Log(gameObject.name + " is being rescued by " + rescuerTransform.name);
-        currentState = CivilianState.Following;
         rescuer = rescuerTransform;
-        navMeshAgent.enabled = true; 
+
+        if (!agent.enabled) agent.enabled = true;
+        if (!agent.isOnNavMesh && NavMesh.SamplePosition(transform.position, out var hit, 2f, NavMesh.AllAreas))
+            agent.Warp(hit.position);
+
+        currentState = CivilianState.Following;
+        Debug.Log($"{name} is following {rescuerTransform.name}");
     }
 
+    // Hoàn tất cứu
     public void CompleteRescue()
     {
         currentState = CivilianState.Rescued;
-        navMeshAgent.enabled = false;
+        if (agent) agent.enabled = false;
         gameObject.SetActive(false);
     }
 
-
-    #region ITargetable Implementation
-
-    public Vector3 GetPosition()
+    void OnDrawGizmosSelected()
     {
-        return transform.position;
+        var p = GetInteractPos();
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawSphere(p, 0.06f);
+        Gizmos.DrawLine(transform.position, p);
     }
 
-    public TargetType GetTargetType()
+    public Vector3 GetPosition() => transform.position;
+    public TargetType GetTargetType() => TargetType.Civilian;
+    public void Interact(IAgent agentWho)
     {
-        return TargetType.Civilian;
+        if (currentState == CivilianState.Rescued) return;
+        StartRescue(agentWho.transform);
     }
-
-    public void Interact(IAgent agent)
-    {
-        if (currentState != CivilianState.Following && currentState != CivilianState.Rescued)
-        {
-            StartRescue(agent.transform);
-        }
-    }
-
-    public bool IsTaskComplete()
-    {
-        return currentState == CivilianState.Following || currentState == CivilianState.Rescued;
-    }
+    public bool IsTaskComplete() =>
+        currentState == CivilianState.Following || currentState == CivilianState.Rescued;
 
     public void Interact(FirefighterBot bot)
     {
         throw new System.NotImplementedException();
     }
-
-    #endregion
 }

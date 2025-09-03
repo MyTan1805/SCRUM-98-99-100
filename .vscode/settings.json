@@ -66,5 +66,5 @@
     "explorer.fileNesting.patterns": {
         "*.sln": "*.csproj"
     },
-    "dotnet.defaultSolution": "SCRUM 98 99100.sln"
+    "dotnet.defaultSolution": "SCRUM-98-99-100.sln"
 }
