@@ -17,7 +17,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float acceleration = 8f;
     [SerializeField] private float deceleration = 10f;
     public float turnSpeed = 180f;
-    [SerializeField] private float rotationSpeed = 720f;
+    // [SerializeField] private float rotationSpeed = 720f;
     private float currentSpeed = 0f;
 
     private Vector2 moveInput; // WASD
