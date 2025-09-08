@@ -11,7 +11,7 @@ public class Civilian : MonoBehaviour, ITargetable
     public bool assessed = false;
 
     [Header("Interact")]
-    [Tooltip("Điểm bot quỳ/kiểmtra. Trống sẽ dùng vị trí nạn nhân.")]
+    [Tooltip("Điểm bot quỳ/kiểm tra. Trống sẽ dùng vị trí nạn nhân.")]
     public Transform interactPoint;
 
     NavMeshAgent agent;
